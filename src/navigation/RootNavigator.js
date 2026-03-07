@@ -4,8 +4,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { useSelector } from 'react-redux';
 
 import AuthStack from './AuthStack';
-// import RiderHome from '../screens/main/rider/RiderHome';
-// import DriverHome from '../screens/main/driver/DriverHome';
+import RiderHomeScreen from '../screens/main/Rider/RiderHomeScreen';
+import DriverHomeScreen from '../screens/main/Driver/DriverHomeScreen'
 import SplashScreen from '../screens/auth/SplashScreen';
 
 const Stack = createStackNavigator();
@@ -24,8 +24,8 @@ const RootNavigator = () => {
 
         
     
-        <Stack.Screen name="RiderHome" component={'RiderHome'} />
-        <Stack.Screen name="DriverHome" component={'DriverHome'} />
+        <Stack.Screen name="RiderHome" component={RiderHomeScreen} />
+        <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
