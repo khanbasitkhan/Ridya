@@ -92,7 +92,7 @@ const SplashScreen = ({ navigation }) => {
         ]}
       >
         <Image
-          source={require('../../assets/images/logo.png')}
+          source={require('../../assets/Ridya.png')}
           style={styles.logo}
           resizeMode="contain"
         />
