@@ -15,8 +15,8 @@ import Geolocation from 'react-native-geolocation-service';
 import firestore from '@react-native-firebase/firestore';
 import { useSelector } from 'react-redux';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { COLORS, FONTS } from '../../constants/theme';
-import { updateLiveLocation } from '../../services/firebaseService';
+import { COLORS, FONTS } from '../../../constants/theme';
+import { updateLiveLocation } from '../../../services/firebaseService';
 
 const { width, height } = Dimensions.get('window');
 
