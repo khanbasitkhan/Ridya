@@ -67,7 +67,7 @@ const RiderHomeScreen = () => {
         } else {
           Alert.alert(
             'Permission Denied',
-            'Using default location (Islamabad).',
+            'Using default location',
           );
         }
       } catch (err) {
