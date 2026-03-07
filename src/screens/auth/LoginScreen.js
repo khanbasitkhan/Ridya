@@ -19,7 +19,7 @@ const LoginScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const rememberMe = useSelector(state => state.user.rememberMe);
 
-  const [identifier, setIdentifier] = useState(''); // Email, Phone, or Username
+  const [identifier, setIdentifier] = useState(''); 
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
