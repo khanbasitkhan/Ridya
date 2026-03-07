@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "285110606378",
+    "project_id": "ridya-fe6c2",
+    "storage_bucket": "ridya-fe6c2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:285110606378:android:37d9ad8f6ee972fc8b0153",
+        "android_client_info": {
+          "package_name": "Ridya.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4ZvvPTL4LdKLVXHdI-uzxtPRmNIOUvXU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
