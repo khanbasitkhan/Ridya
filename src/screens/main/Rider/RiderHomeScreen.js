@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Platform,
   PermissionsAndroid,
   Alert,
@@ -15,16 +14,19 @@ import MapViewDirections from 'react-native-maps-directions';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import firestore from '@react-native-firebase/firestore'; // Import Firestore
+import { useSelector } from 'react-redux'; // Import Selector for user data
 import { COLORS, FONTS } from '../../../constants/theme';
 import { GOOGLE_MAPS_APIKEY } from '../../../constants/keys';
+
 const { width, height } = Dimensions.get('window');
-// const GOOGLE_MAPS_APIKEY = 'AIzaSyCdmIHvKSHu-vKEeN0hcvjQrOtr8row6qE';
 
 const RiderHomeScreen = () => {
   const mapRef = useRef(null);
+  const { userData } = useSelector(state => state.user); // Redux se user info lein
 
   const [region, setRegion] = useState({
-    latitude: 33.6844, 
+    latitude: 33.6844,
     longitude: 73.0479,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
@@ -35,10 +37,10 @@ const RiderHomeScreen = () => {
   const [rideType, setRideType] = useState('car');
   const [isSearching, setIsSearching] = useState(false);
   const [rideStatus, setRideStatus] = useState('idle');
-  const [driverLocation, setDriverLocation] = useState(null);
+  const [driverInfo, setDriverInfo] = useState(null); // Real Driver Data
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
-
+  const [currentRideId, setCurrentRideId] = useState(null);
 
   const getCurrentLocation = useCallback(() => {
     Geolocation.getCurrentPosition(
@@ -47,8 +49,6 @@ const RiderHomeScreen = () => {
         const newRegion = { ...region, latitude, longitude };
         setRegion(newRegion);
         setPickup({ latitude, longitude, address: 'Current Location' });
-
-        
         mapRef.current?.animateToRegion(newRegion, 1000);
       },
       error => console.log(error),
@@ -56,7 +56,6 @@ const RiderHomeScreen = () => {
     );
   }, [region]);
 
- 
   const requestLocationPermission = useCallback(async () => {
     if (Platform.OS === 'android') {
       try {
@@ -75,34 +74,70 @@ const RiderHomeScreen = () => {
         console.warn(err);
       }
     } else {
-      
       getCurrentLocation();
     }
   }, [getCurrentLocation]);
 
-
   useEffect(() => {
     requestLocationPermission();
   }, [requestLocationPermission]);
+
+  // --- NEW: Real-time Ride Status Listener ---
+  useEffect(() => {
+    if (currentRideId) {
+      const unsubscribe = firestore()
+        .collection('Rides')
+        .doc(currentRideId)
+        .onSnapshot(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            if (data.status === 'accepted') {
+              setIsSearching(false);
+              setRideStatus('onWay');
+              setDriverInfo(data); // Driver details like Name, Vehicle etc.
+            }
+          }
+        });
+      return () => unsubscribe();
+    }
+  }, [currentRideId]);
 
   const calculateFare = dist => {
     const rates = { car: 50, bike: 20, truck: 120 };
     return (dist * rates[rideType]).toFixed(0);
   };
 
-  const startBooking = () => {
+  // --- UPDATED: Professional Booking Logic ---
+  const startBooking = async () => {
     if (!pickup || !destination)
       return Alert.alert('Error', 'Select both locations');
+
     setIsSearching(true);
 
-    setTimeout(() => {
+    try {
+      const rideRequest = {
+        riderId: userData.uid,
+        riderName: userData.fullName,
+        riderPhone: userData.phone,
+        pickup: new firestore.GeoPoint(pickup.latitude, pickup.longitude),
+        pickupAddress: pickup.address,
+        destination: new firestore.GeoPoint(
+          destination.latitude,
+          destination.longitude,
+        ),
+        destinationAddress: destination.address,
+        fare: calculateFare(distance),
+        status: 'pending',
+        vehicleType: rideType,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      };
+
+      const docRef = await firestore().collection('Rides').add(rideRequest);
+      setCurrentRideId(docRef.id);
+    } catch (error) {
       setIsSearching(false);
-      setRideStatus('onWay');
-      setDriverLocation({
-        latitude: pickup.latitude + 0.002,
-        longitude: pickup.longitude + 0.002,
-      });
-    }, 4000);
+      Alert.alert('Error', 'Booking failed: ' + error.message);
+    }
   };
 
   return (
@@ -126,8 +161,9 @@ const RiderHomeScreen = () => {
           </Marker>
         )}
 
-        {driverLocation && (
-          <Marker coordinate={driverLocation} rotation={90}>
+        {/* Driver Live Marker (Updates when ride accepted) */}
+        {driverInfo?.driverLocation && (
+          <Marker coordinate={driverInfo.driverLocation} rotation={90}>
             <Icon
               name={
                 rideType === 'car'
@@ -160,7 +196,6 @@ const RiderHomeScreen = () => {
         )}
       </MapView>
 
-      
       {rideStatus === 'idle' && (
         <View style={styles.searchContainer}>
           <GooglePlacesAutocomplete
@@ -179,7 +214,6 @@ const RiderHomeScreen = () => {
         </View>
       )}
 
-      
       <View style={styles.bottomSheet}>
         {rideStatus === 'idle' ? (
           <>
@@ -232,9 +266,12 @@ const RiderHomeScreen = () => {
             <View style={styles.driverHeader}>
               <Icon name="account-circle" size={50} color={COLORS.border} />
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={FONTS.h3}>M. Abdul Basit</Text>
+                <Text style={FONTS.h3}>
+                  {driverInfo?.driverName || 'Finding...'}
+                </Text>
                 <Text style={{ color: COLORS.textGrey }}>
-                  Honda Civic • LEW-5542
+                  {driverInfo?.vehicleInfo?.vehicleName} •{' '}
+                  {driverInfo?.vehicleInfo?.vehicleNumber}
                 </Text>
               </View>
               <View style={styles.rating}>
@@ -242,7 +279,7 @@ const RiderHomeScreen = () => {
                 <Text style={{ fontWeight: 'bold' }}> 4.9</Text>
               </View>
             </View>
-            <Text style={styles.arrivalText}>Driver is arriving in 4 mins</Text>
+            <Text style={styles.arrivalText}>Driver is on the way</Text>
             <TouchableOpacity style={styles.comingBtn}>
               <Text style={styles.comingText}>I'M COMING</Text>
             </TouchableOpacity>
@@ -252,7 +289,21 @@ const RiderHomeScreen = () => {
 
       {isSearching && (
         <View style={styles.loader}>
-          <Text style={styles.loaderText}>Finding your Ride...</Text>
+          <Icon name="radar" size={80} color={COLORS.primary} />
+          <Text style={styles.loaderText}>
+            Searching nearest {rideType}s...
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setIsSearching(false);
+              firestore().collection('Rides').doc(currentRideId).delete();
+            }}
+            style={{ marginTop: 20 }}
+          >
+            <Text style={{ color: 'red', fontWeight: 'bold' }}>
+              CANCEL REQUEST
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
