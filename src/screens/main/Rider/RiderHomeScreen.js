@@ -1,31 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Image,
-    PermissionsAndroid,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Platform,
+  PermissionsAndroid,
+  Alert,
+  Dimensions,
 } from 'react-native';
-import Geolocation from 'react-native-geolocation-service';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { COLORS, FONTS } from '../../constants/theme';
-
+import { COLORS, FONTS } from '../../../constants/theme';
+import { GOOGLE_MAPS_APIKEY } from '../../../constants/keys';
 const { width, height } = Dimensions.get('window');
-const GOOGLE_MAPS_APIKEY = 'AIzaSyCdmIHvKSHu-vKEeN0hcvjQrOtr8row6qE';
+// const GOOGLE_MAPS_APIKEY = 'AIzaSyCdmIHvKSHu-vKEeN0hcvjQrOtr8row6qE';
 
 const RiderHomeScreen = () => {
   const mapRef = useRef(null);
 
-  // States
   const [region, setRegion] = useState({
-    latitude: 33.6844, // Default Islamabad
+    latitude: 33.6844, 
     longitude: 73.0479,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
@@ -33,41 +32,58 @@ const RiderHomeScreen = () => {
 
   const [pickup, setPickup] = useState(null);
   const [destination, setDestination] = useState(null);
-  const [rideType, setRideType] = useState('car'); // car, bike, truck
+  const [rideType, setRideType] = useState('car');
   const [isSearching, setIsSearching] = useState(false);
-  const [rideStatus, setRideStatus] = useState('idle'); // idle, searching, onWay, started
+  const [rideStatus, setRideStatus] = useState('idle');
   const [driverLocation, setDriverLocation] = useState(null);
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  useEffect(() => {
-    requestLocationPermission();
-  }, []);
 
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        getCurrentLocation();
-      } else {
-        Alert.alert('Permission Denied', 'Defaulting to Islamabad location.');
-      }
-    }
-  };
-
-  const getCurrentLocation = () => {
+  const getCurrentLocation = useCallback(() => {
     Geolocation.getCurrentPosition(
       position => {
         const { latitude, longitude } = position.coords;
-        setRegion({ ...region, latitude, longitude });
+        const newRegion = { ...region, latitude, longitude };
+        setRegion(newRegion);
         setPickup({ latitude, longitude, address: 'Current Location' });
+
+        
+        mapRef.current?.animateToRegion(newRegion, 1000);
       },
       error => console.log(error),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
     );
-  };
+  }, [region]);
+
+ 
+  const requestLocationPermission = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          getCurrentLocation();
+        } else {
+          Alert.alert(
+            'Permission Denied',
+            'Using default location (Islamabad).',
+          );
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    } else {
+      
+      getCurrentLocation();
+    }
+  }, [getCurrentLocation]);
+
+
+  useEffect(() => {
+    requestLocationPermission();
+  }, [requestLocationPermission]);
 
   const calculateFare = dist => {
     const rates = { car: 50, bike: 20, truck: 120 };
@@ -78,7 +94,7 @@ const RiderHomeScreen = () => {
     if (!pickup || !destination)
       return Alert.alert('Error', 'Select both locations');
     setIsSearching(true);
-    // Simulating Driver Found after 3 seconds
+
     setTimeout(() => {
       setIsSearching(false);
       setRideStatus('onWay');
@@ -91,7 +107,6 @@ const RiderHomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Map Section */}
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -100,28 +115,29 @@ const RiderHomeScreen = () => {
         showsUserLocation={true}
       >
         {pickup && (
-          <Marker coordinate={pickup} title="Pickup">
+          <Marker coordinate={pickup}>
             <Icon name="map-marker-radius" size={40} color={COLORS.primary} />
           </Marker>
         )}
 
         {destination && (
-          <Marker coordinate={destination} title="Drop-off">
+          <Marker coordinate={destination}>
             <Icon name="flag-checkered" size={40} color={COLORS.secondary} />
           </Marker>
         )}
 
         {driverLocation && (
           <Marker coordinate={driverLocation} rotation={90}>
-            <Image
-              source={
+            <Icon
+              name={
                 rideType === 'car'
-                  ? require('../../assets/images/car_top.png')
+                  ? 'car'
                   : rideType === 'bike'
-                  ? require('../../assets/images/bike_top.png')
-                  : require('../../assets/images/truck_top.png')
+                  ? 'bike'
+                  : 'truck'
               }
-              style={{ width: 40, height: 40 }}
+              size={35}
+              color={COLORS.textDark}
             />
           </Marker>
         )}
@@ -137,18 +153,18 @@ const RiderHomeScreen = () => {
               setDistance(result.distance);
               setDuration(result.duration);
               mapRef.current.fitToCoordinates(result.coordinates, {
-                edgePadding: { top: 50, right: 50, bottom: 300, left: 50 },
+                edgePadding: { top: 100, right: 50, bottom: 350, left: 50 },
               });
             }}
           />
         )}
       </MapView>
 
-      {/* Search Bar - Floating */}
+      
       {rideStatus === 'idle' && (
         <View style={styles.searchContainer}>
           <GooglePlacesAutocomplete
-            placeholder="Where to?"
+            placeholder="Enter Destination"
             fetchDetails={true}
             onPress={(data, details = null) => {
               setDestination({
@@ -163,11 +179,11 @@ const RiderHomeScreen = () => {
         </View>
       )}
 
-      {/* Bottom Sheet - Details & Options */}
+      
       <View style={styles.bottomSheet}>
         {rideStatus === 'idle' ? (
           <>
-            <Text style={styles.sheetTitle}>Choose a Ride</Text>
+            <Text style={styles.sheetTitle}>Where are you going?</Text>
             <View style={styles.rideOptions}>
               {['car', 'bike', 'truck'].map(type => (
                 <TouchableOpacity
@@ -180,12 +196,13 @@ const RiderHomeScreen = () => {
                 >
                   <Icon
                     name={type === 'truck' ? 'truck' : type}
-                    size={30}
+                    size={28}
                     color={rideType === type ? COLORS.white : COLORS.primary}
                   />
                   <Text
                     style={{
                       color: rideType === type ? COLORS.white : COLORS.textDark,
+                      fontSize: 12,
                     }}
                   >
                     {type.toUpperCase()}
@@ -196,48 +213,46 @@ const RiderHomeScreen = () => {
 
             {destination && (
               <View style={styles.fareContainer}>
-                <Text style={FONTS.h3}>
-                  Est. Fare: RS {calculateFare(distance)}
-                </Text>
-                <Text style={FONTS.body}>
-                  Dist: {distance.toFixed(1)} km | Time: {duration.toFixed(0)}{' '}
-                  min
-                </Text>
+                <View style={styles.fareRow}>
+                  <Text style={FONTS.h3}>RS {calculateFare(distance)}</Text>
+                  <Text style={styles.distText}>
+                    {distance.toFixed(1)} km • {duration.toFixed(0)} min
+                  </Text>
+                </View>
                 <TouchableOpacity style={styles.goBtn} onPress={startBooking}>
-                  <Text style={styles.goBtnText}>GO - FIND DRIVER</Text>
+                  <Text style={styles.goBtnText}>
+                    CONFIRM {rideType.toUpperCase()}
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
           </>
-        ) : rideStatus === 'onWay' ? (
-          <View style={styles.driverDetailCard}>
+        ) : (
+          <View style={styles.driverCard}>
             <View style={styles.driverHeader}>
-              <View style={styles.driverInfo}>
-                <Icon name="account-circle" size={50} color={COLORS.primary} />
-                <View style={{ marginLeft: 10 }}>
-                  <Text style={FONTS.h3}>Ahmad Khan</Text>
-                  <Text style={COLORS.textGrey}>Toyota Corolla • ABC-123</Text>
-                </View>
+              <Icon name="account-circle" size={50} color={COLORS.border} />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={FONTS.h3}>M. Abdul Basit</Text>
+                <Text style={{ color: COLORS.textGrey }}>
+                  Honda Civic • LEW-5542
+                </Text>
               </View>
-              <View style={styles.ratingBox}>
-                <Icon name="star" size={20} color="#FFD700" />
-                <Text>4.8</Text>
+              <View style={styles.rating}>
+                <Icon name="star" size={16} color="#FFD700" />
+                <Text style={{ fontWeight: 'bold' }}> 4.9</Text>
               </View>
             </View>
-            <Text style={styles.statusText}>
-              Driver is on the way (5m Wait)
-            </Text>
-            <TouchableOpacity style={styles.cancelBtn}>
-              <Text style={{ color: COLORS.white }}>I'm Coming</Text>
+            <Text style={styles.arrivalText}>Driver is arriving in 4 mins</Text>
+            <TouchableOpacity style={styles.comingBtn}>
+              <Text style={styles.comingText}>I'M COMING</Text>
             </TouchableOpacity>
           </View>
-        ) : null}
+        )}
       </View>
 
-      {/* Searching Loader Overlay */}
       {isSearching && (
-        <View style={styles.loaderOverlay}>
-          <Text style={styles.loaderText}>Searching nearest drivers...</Text>
+        <View style={styles.loader}>
+          <Text style={styles.loaderText}>Finding your Ride...</Text>
         </View>
       )}
     </View>
@@ -245,28 +260,38 @@ const RiderHomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: COLORS.white },
   map: { flex: 1 },
   searchContainer: {
     position: 'absolute',
     top: 50,
     width: '90%',
     alignSelf: 'center',
-    backgroundColor: 'transparent',
-    zIndex: 5,
+    zIndex: 1,
   },
-  searchInput: { borderRadius: 10, elevation: 5, height: 50 },
+  searchInput: {
+    height: 50,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    paddingHorizontal: 15,
+  },
   bottomSheet: {
     position: 'absolute',
     bottom: 0,
     width: '100%',
     backgroundColor: COLORS.white,
     padding: 20,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    elevation: 10,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
   },
-  sheetTitle: { ...FONTS.h2, marginBottom: 15 },
+  sheetTitle: { ...FONTS.h2, marginBottom: 20, color: COLORS.textDark },
   rideOptions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -275,60 +300,67 @@ const styles = StyleSheet.create({
   rideBtn: {
     flex: 1,
     alignItems: 'center',
-    padding: 15,
+    padding: 12,
     borderRadius: 15,
     backgroundColor: COLORS.background,
     marginHorizontal: 5,
-    borderWidth: 1,
+    borderWeight: 1,
     borderColor: COLORS.border,
   },
   activeRide: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   fareContainer: {
     borderTopWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.background,
     paddingTop: 15,
   },
-  goBtn: {
-    backgroundColor: COLORS.primary,
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  goBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 18 },
-  loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loaderText: { color: COLORS.white, fontSize: 18, fontWeight: '600' },
-  driverDetailCard: { padding: 10 },
-  driverHeader: {
+  fareRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  driverInfo: { flexDirection: 'row', alignItems: 'center' },
-  ratingBox: {
+  distText: { color: COLORS.textGrey, fontSize: 14 },
+  goBtn: {
+    backgroundColor: COLORS.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  goBtnText: { color: COLORS.white, fontWeight: 'bold', fontSize: 16 },
+  loader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    marginTop: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  driverCard: { paddingVertical: 10 },
+  driverHeader: { flexDirection: 'row', alignItems: 'center' },
+  rating: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.background,
     padding: 5,
-    borderRadius: 8,
+    borderRadius: 10,
   },
-  statusText: {
+  arrivalText: {
     textAlign: 'center',
-    marginVertical: 15,
     color: COLORS.secondary,
-    fontWeight: '700',
+    marginVertical: 15,
+    fontWeight: 'bold',
   },
-  cancelBtn: {
+  comingBtn: {
     backgroundColor: COLORS.secondary,
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
+  comingText: { color: COLORS.white, fontWeight: 'bold' },
 });
 
 export default RiderHomeScreen;
