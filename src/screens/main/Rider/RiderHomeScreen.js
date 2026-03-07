@@ -14,8 +14,8 @@ import MapViewDirections from 'react-native-maps-directions';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Geolocation from 'react-native-geolocation-service';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import firestore from '@react-native-firebase/firestore'; // Import Firestore
-import { useSelector } from 'react-redux'; // Import Selector for user data
+import firestore from '@react-native-firebase/firestore'; 
+import { useSelector } from 'react-redux'; 
 import { COLORS, FONTS } from '../../../constants/theme';
 import { GOOGLE_MAPS_APIKEY } from '../../../constants/keys';
 
@@ -23,7 +23,7 @@ const { width, height } = Dimensions.get('window');
 
 const RiderHomeScreen = () => {
   const mapRef = useRef(null);
-  const { userData } = useSelector(state => state.user); // Redux se user info lein
+  const { userData } = useSelector(state => state.user); 
 
   const [region, setRegion] = useState({
     latitude: 33.6844,
@@ -37,7 +37,7 @@ const RiderHomeScreen = () => {
   const [rideType, setRideType] = useState('car');
   const [isSearching, setIsSearching] = useState(false);
   const [rideStatus, setRideStatus] = useState('idle');
-  const [driverInfo, setDriverInfo] = useState(null); // Real Driver Data
+  const [driverInfo, setDriverInfo] = useState(null); 
   const [distance, setDistance] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentRideId, setCurrentRideId] = useState(null);
@@ -82,7 +82,6 @@ const RiderHomeScreen = () => {
     requestLocationPermission();
   }, [requestLocationPermission]);
 
-  // --- NEW: Real-time Ride Status Listener ---
   useEffect(() => {
     if (currentRideId) {
       const unsubscribe = firestore()
@@ -94,7 +93,7 @@ const RiderHomeScreen = () => {
             if (data.status === 'accepted') {
               setIsSearching(false);
               setRideStatus('onWay');
-              setDriverInfo(data); // Driver details like Name, Vehicle etc.
+              setDriverInfo(data); 
             }
           }
         });
@@ -107,7 +106,7 @@ const RiderHomeScreen = () => {
     return (dist * rates[rideType]).toFixed(0);
   };
 
-  // --- UPDATED: Professional Booking Logic ---
+
   const startBooking = async () => {
     if (!pickup || !destination)
       return Alert.alert('Error', 'Select both locations');
@@ -161,7 +160,7 @@ const RiderHomeScreen = () => {
           </Marker>
         )}
 
-        {/* Driver Live Marker (Updates when ride accepted) */}
+       
         {driverInfo?.driverLocation && (
           <Marker coordinate={driverInfo.driverLocation} rotation={90}>
             <Icon
