@@ -12,10 +12,13 @@ import {
   Image,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { useDispatch } from 'react-redux';
 import { COLORS, FONTS } from '../../constants/theme';
 import { signUpUser } from '../../services/firebaseService';
+import { setUser } from '../../store/userSlice';
 
 const SignUpScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
   const [role, setRole] = useState('rider');
   const [profileImage, setProfileImage] = useState(null);
   const [fullName, setFullName] = useState('');
@@ -45,6 +48,11 @@ const SignUpScreen = ({ navigation }) => {
       return;
     }
 
+    if (role === 'driver' && (!vName || !vNumber || !vColor)) {
+      Alert.alert('Error', 'Please fill all vehicle details');
+      return;
+    }
+
     const userData = {
       fullName,
       email,
@@ -52,15 +60,19 @@ const SignUpScreen = ({ navigation }) => {
       phone,
       role,
       profileImage,
-      vehicleDetails:
-        role === 'driver'
-          ? { name: vName, number: vNumber, color: vColor }
-          : null,
     };
+
+    if (role === 'driver') {
+      userData.vehicleDetails = {
+        name: vName,
+        number: vNumber,
+        color: vColor,
+      };
+    }
 
     const result = await signUpUser(userData);
     if (result.success) {
-      navigation.replace(role === 'rider' ? 'RiderHome' : 'DriverHome');
+      dispatch(setUser(result.user));
     } else {
       Alert.alert('Sign Up Failed', result.error);
     }
@@ -113,26 +125,35 @@ const SignUpScreen = ({ navigation }) => {
 
         <TextInput
           placeholder="Full Name"
+          placeholderTextColor={COLORS.textGrey}
           style={styles.input}
           onChangeText={setFullName}
+          color={COLORS.textDark}
         />
         <TextInput
           placeholder="Email"
+          placeholderTextColor={COLORS.textGrey}
           style={styles.input}
           keyboardType="email-address"
           onChangeText={setEmail}
+          color={COLORS.textDark}
+          autoCapitalize="none"
         />
         <TextInput
           placeholder="Phone Number"
+          placeholderTextColor={COLORS.textGrey}
           style={styles.input}
           keyboardType="phone-pad"
           onChangeText={setPhone}
+          color={COLORS.textDark}
         />
         <TextInput
           placeholder="Password"
+          placeholderTextColor={COLORS.textGrey}
           style={styles.input}
           secureTextEntry
           onChangeText={setPassword}
+          color={COLORS.textDark}
         />
 
         {role === 'driver' && (
@@ -140,18 +161,24 @@ const SignUpScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Vehicle Information</Text>
             <TextInput
               placeholder="Vehicle Name"
+              placeholderTextColor={COLORS.textGrey}
               style={styles.input}
               onChangeText={setVName}
+              color={COLORS.textDark}
             />
             <TextInput
               placeholder="Vehicle Number"
+              placeholderTextColor={COLORS.textGrey}
               style={styles.input}
               onChangeText={setVNumber}
+              color={COLORS.textDark}
             />
             <TextInput
               placeholder="Vehicle Color"
+              placeholderTextColor={COLORS.textGrey}
               style={styles.input}
               onChangeText={setVColor}
+              color={COLORS.textDark}
             />
           </View>
         )}
@@ -163,7 +190,9 @@ const SignUpScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.footerText}>
             Already have an account?{' '}
-            <Text style={{ color: COLORS.primary }}>Login</Text>
+            <Text style={{ color: COLORS.primary, fontWeight: '700' }}>
+              Login
+            </Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -212,6 +241,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 15,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
   },
   driverSection: { marginTop: 10 },
   sectionTitle: { ...FONTS.h3, marginBottom: 15, color: COLORS.secondary },
@@ -221,6 +252,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 20,
+    elevation: 5,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   btnText: { color: COLORS.white, fontWeight: '700', fontSize: 16 },
   footerText: { textAlign: 'center', marginTop: 25, color: COLORS.textGrey },
